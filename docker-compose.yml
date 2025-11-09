@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  backend:
+    image: cloudnotes-backend
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      mongo:
+        condition: service_started
+    networks:
+      - cloudnotes-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: cloudnotes-frontend
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env
+    environment:
+      - VITE_BACKEND_URL=http://backend:5000
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - cloudnotes-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongo:
+    image: mongo:latest  
+    container_name: cloudnotes-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+networks:
+  cloudnotes-network:
+    driver: bridge
+
+volumes:
+  mongo_data:

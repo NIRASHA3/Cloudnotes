@@ -1,0 +1,114 @@
+{
+  "notes": [
+    {
+      "_id": "1",
+      "owner": "1",
+      "title": "Welcome to NotesApp",
+      "content": "This is your first note. Start organizing your thoughts and ideas here! You can create, edit, and organize your notes with categories and tags.",
+      "tags": ["welcome", "getting-started"],
+      "category": "general",
+      "pinned": true,
+      "createdAt": "2024-12-15T10:00:00.000Z",
+      "updatedAt": "2024-12-15T10:00:00.000Z"
+    },
+    {
+      "_id": "2",
+      "owner": "1",
+      "title": "Meeting Notes",
+      "content": "Discussed project timeline and deliverables for Q1 2024. Important decisions were made regarding the new feature rollout.",
+      "tags": ["work", "meeting", "q1-2024"],
+      "category": "work",
+      "pinned": false,
+      "createdAt": "2024-12-14T15:30:00.000Z",
+      "updatedAt": "2024-12-14T15:30:00.000Z"
+    },
+    {
+      "_id": "3",
+      "owner": "1",
+      "title": "Shopping List",
+      "content": "Groceries for the week: Milk, Eggs, Bread, Fruits, Vegetables, Chicken, Pasta, Coffee",
+      "tags": ["personal", "shopping", "groceries"],
+      "category": "personal",
+      "pinned": false,
+      "createdAt": "2024-12-13T09:15:00.000Z",
+      "updatedAt": "2024-12-13T09:15:00.000Z"
+    },
+    {
+      "_id": "4",
+      "owner": "1",
+      "title": "Project Ideas",
+      "content": "Brainstorming new project ideas:\n1. AI-powered note organization\n2. Collaborative note sharing\n3. Voice-to-note feature\n4. Advanced search with filters",
+      "tags": ["ideas", "brainstorming", "projects"],
+      "category": "ideas",
+      "pinned": true,
+      "createdAt": "2024-12-12T14:20:00.000Z",
+      "updatedAt": "2024-12-12T14:20:00.000Z"
+    },
+    {
+      "_id": "5",
+      "owner": "1",
+      "title": "Learning Goals 2024",
+      "content": "Skills to learn this year:\n- React Advanced Patterns\n- Node.js Performance Optimization\n- MongoDB Aggregation Framework\n- Docker and Kubernetes\n- GraphQL API Design",
+      "tags": ["learning", "goals", "skills", "2024"],
+      "category": "learning",
+      "pinned": false,
+      "createdAt": "2024-12-11T11:45:00.000Z",
+      "updatedAt": "2024-12-11T11:45:00.000Z"
+    },
+    {
+      "_id": "6",
+      "owner": "1",
+      "title": "Book Recommendations",
+      "content": "Books to read:\n1. Clean Code by Robert Martin\n2. Design Patterns by Gang of Four\n3. The Pragmatic Programmer\n4. You Don't Know JS\n5. Atomic Habits",
+      "tags": ["books", "reading", "recommendations"],
+      "category": "reading",
+      "pinned": false,
+      "createdAt": "2024-12-10T16:20:00.000Z",
+      "updatedAt": "2024-12-10T16:20:00.000Z"
+    },
+    {
+      "_id": "7",
+      "owner": "1",
+      "title": "Fitness Routine",
+      "content": "Weekly workout schedule:\nMonday: Chest & Triceps\nTuesday: Back & Biceps\nWednesday: Legs & Shoulders\nThursday: Cardio\nFriday: Full Body\nSaturday: Rest\nSunday: Yoga/Stretching",
+      "tags": ["fitness", "workout", "routine", "health"],
+      "category": "fitness",
+      "pinned": false,
+      "createdAt": "2024-12-09T08:30:00.000Z",
+      "updatedAt": "2024-12-09T08:30:00.000Z"
+    },
+    {
+      "_id": "8",
+      "owner": "1",
+      "title": "Travel Plans",
+      "content": "Upcoming travel destinations:\n- Japan (Spring 2024)\n- Europe Summer Trip\n- Weekend getaway to mountains\n- Beach vacation in December",
+      "tags": ["travel", "plans", "vacation"],
+      "category": "travel",
+      "pinned": false,
+      "createdAt": "2024-12-08T13:15:00.000Z",
+      "updatedAt": "2024-12-08T13:15:00.000Z"
+    },
+    {
+      "_id": "9",
+      "owner": "1",
+      "title": "Code Snippets",
+      "content": "Useful code snippets:\n```javascript\n// Debounce function\nconst debounce = (func, delay) => {\n  let timeoutId;\n  return (...args) => {\n    clearTimeout(timeoutId);\n    timeoutId = setTimeout(() => func.apply(null, args), delay);\n  };\n};\n```",
+      "tags": ["code", "snippets", "javascript", "development"],
+      "category": "development",
+      "pinned": true,
+      "createdAt": "2024-12-07T10:00:00.000Z",
+      "updatedAt": "2024-12-07T10:00:00.000Z"
+    },
+    {
+      "_id": "10",
+      "owner": "1",
+      "title": "Recipe Ideas",
+      "content": "Healthy recipes to try:\n- Quinoa salad with roasted vegetables\n- Chicken stir-fry with broccoli\n- Overnight oats with berries\n- Greek yogurt parfait\n- Vegetable soup",
+      "tags": ["food", "recipes", "healthy", "cooking"],
+      "category": "food",
+      "pinned": false,
+      "createdAt": "2024-12-06T17:45:00.000Z",
+      "updatedAt": "2024-12-06T17:45:00.000Z"
+    }
+  ]
+}

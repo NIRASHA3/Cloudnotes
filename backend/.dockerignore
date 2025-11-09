@@ -1,0 +1,20 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Logs
+*.log
+
+# Build output
+dist
+build
+
+# System / editor files
+.DS_Store
+.vscode
+.idea
+
+# Git
+.git
+.gitignore

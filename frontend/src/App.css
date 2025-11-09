@@ -1,0 +1,16 @@
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  background-color: rgba(227, 242, 253, 0.95); /* Semi-transparent light blue overlay */
+  backdrop-filter: blur(10px);
+}
+
+.note-card {
+  transition: all 0.2s ease-in-out;
+  border-radius: 12px;
+}
+
+.note-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
