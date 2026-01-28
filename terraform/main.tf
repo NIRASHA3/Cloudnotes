@@ -5,6 +5,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
   }
 }
 
@@ -16,10 +24,30 @@ provider "aws" {
   # secret_key = var.aws_secret_key
 }
 
+# Generate SSH key pair
+resource "tls_private_key" "cloudnotes_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Save private key locally (for Ansible)
+resource "local_file" "private_key" {
+  content         = tls_private_key.cloudnotes_key.private_key_pem
+  filename        = "${path.module}/keys/cloudnotes-key.pem"
+  file_permission = "0600"
+}
+
+# Save public key locally (optional)
+resource "local_file" "public_key" {
+  content         = tls_private_key.cloudnotes_key.public_key_openssh
+  filename        = "${path.module}/keys/cloudnotes-key.pub"
+  file_permission = "0644"
+}
+
 # Create a key pair for SSH access
 resource "aws_key_pair" "cloudnotes_key" {
   key_name   = "cloudnotes-key-${var.environment}"
-  public_key = file("${path.module}/keys/cloudnotes-key.pub")
+  public_key = tls_private_key.cloudnotes_key.public_key_openssh
   
   tags = {
     Project     = "CloudNotes"
@@ -150,7 +178,7 @@ resource "aws_instance" "cloudnotes_server" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = file("${path.module}/keys/cloudnotes-key.pem")
+      private_key = tls_private_key.cloudnotes_key.private_key_pem
       host        = self.public_ip
     }
   }
