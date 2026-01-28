@@ -8,6 +8,12 @@ export default defineConfig({
     host: '0.0.0.0', // Listen on all interfaces
     port: 5173,
     strictPort: true,
+    allowedHosts: [
+      'cloudnotes.duckdns.org',
+      '.duckdns.org',  // Allow all duckdns subdomains
+      'localhost',
+      '13.51.227.34'
+    ],
     hmr: {
       clientPort: 5173
     },
