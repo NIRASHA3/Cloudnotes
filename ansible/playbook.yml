@@ -10,6 +10,9 @@
     app_dir: "/opt/{{ app_name }}"
     docker_compose_version: "v2.24.5"
     
+    # Domain configuration - Change this to your DuckDNS domain
+    app_domain: "cloudnotes.duckdns.org"
+    
     # Docker images from your Docker Hub
     backend_image: "nirashadeshani/cloudnotes:backend"
     frontend_image: "nirashadeshani/cloudnotes:frontend"

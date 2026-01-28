@@ -22,7 +22,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_BACKEND_URL=http://{{ ansible_host }}:5000
+      - VITE_BACKEND_URL=http://{{ app_domain }}:5000
     depends_on:
       backend:
         condition: service_healthy
