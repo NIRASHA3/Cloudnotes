@@ -101,6 +101,7 @@
         name: "{{ item }}"
         source: pull
         state: present
+        force_source: yes
       loop:
         - "{{ backend_image }}"
         - "{{ frontend_image }}"
