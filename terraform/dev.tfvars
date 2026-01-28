@@ -1,4 +1,4 @@
 environment = "dev"
-instance_type = "t2.micro"  # FREE TIER eligible
+instance_type = "t3.micro"  # FREE TIER eligible (750 hours/month for 12 months)
 aws_region = "eu-north-1"  
-root_volume_size = 20  # Free tier includes 30GB
+root_volume_size = 20
