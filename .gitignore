@@ -36,3 +36,21 @@ yarn-error.log*
 .docker
 docker-compose.override.yml
 */data
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!example.tfvars
+
+# SSH Keys (NEVER commit these!)
+*.pem
+*.key
+!*.pub
+
+# Ansible
+ansible/inventory/
+*.retry
