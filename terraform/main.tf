@@ -147,6 +147,11 @@ resource "aws_instance" "cloudnotes_server" {
 
   vpc_security_group_ids = [aws_security_group.cloudnotes_sg.id]
 
+  # Force recreation when key changes
+  lifecycle {
+    create_before_destroy = true
+  }
+
   # Root disk
   root_block_device {
     volume_size = var.root_volume_size
@@ -171,17 +176,7 @@ resource "aws_instance" "cloudnotes_server" {
     ManagedBy   = "Terraform"
   }
 
-  # Ensure instance is reachable via SSH
-  provisioner "remote-exec" {
-    inline = ["echo 'Instance is ready for Ansible configuration'"]
-
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = tls_private_key.cloudnotes_key.private_key_pem
-      host        = self.public_ip
-    }
-  }
+  # Removed remote-exec provisioner - Ansible will handle SSH connectivity
 }
 
 # Elastic IP for static public IP

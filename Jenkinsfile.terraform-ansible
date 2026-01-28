@@ -41,10 +41,24 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    sh '''
+                    script {
                         echo "Creating Terraform plan..."
-                        terraform plan -out=tfplan -input=false -var-file=${TF_WORKSPACE}.tfvars
-                    '''
+                        
+                        // Check if instance needs to be recreated (SSH key mismatch)
+                        def instanceExists = sh(
+                            script: 'terraform state list 2>/dev/null | grep aws_instance.cloudnotes_server || true',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (instanceExists) {
+                            echo "Instance exists. Checking if recreation is needed..."
+                            // Force recreation if key changed by adding replace flag
+                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars -replace=aws_instance.cloudnotes_server || terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                        } else {
+                            echo "New infrastructure deployment..."
+                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                        }
+                    }
                 }
             }
         }
