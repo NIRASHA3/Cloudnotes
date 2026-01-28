@@ -1,0 +1,9 @@
+all:
+  children:
+    project_CloudNotes:
+      hosts:
+        cloudnotes_server:
+          ansible_host: 13.62.118.51
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ../terraform/keys/cloudnotes-key.pem
+          ansible_python_interpreter: /usr/bin/python3

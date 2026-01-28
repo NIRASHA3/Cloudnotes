@@ -1,6 +1,6 @@
 ---
 - name: Deploy CloudNotes Application on AWS EC2
-  hosts: tag_Project_CloudNotes
+  hosts: project_CloudNotes
   become: yes
   gather_facts: yes
   
@@ -85,18 +85,19 @@
         mode: '0600'
     
     - name: Pull Docker images
-      docker_image:
+      community.docker.docker_image:
         name: "{{ item }}"
         source: pull
+        state: present
       loop:
         - "{{ backend_image }}"
         - "{{ frontend_image }}"
     
     - name: Deploy application with Docker Compose
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
         state: present
-        restarted: yes
+        recreate: always
     
     - name: Wait for backend to be ready
       wait_for:

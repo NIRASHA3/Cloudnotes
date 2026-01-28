@@ -1,13 +1,16 @@
-plugin: amazon.aws.aws_ec2
+plugin: aws_ec2
 regions:
-  - us-east-1
+  - eu-north-1
 filters:
   tag:Project: CloudNotes
-  instance-state-name: running
+hostnames:
+  - public-ip-address
+compose:
+  ansible_user: ubuntu
+  ansible_ssh_private_key_file: ../terraform/keys/cloudnotes-key.pem
+  ansible_python_interpreter: /usr/bin/python3
 keyed_groups:
   - key: tags.Environment
     prefix: env
   - key: tags.Project
     prefix: project
-compose:
-  ansible_host: public_ip_address

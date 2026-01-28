@@ -88,14 +88,16 @@ pipeline {
                             mkdir -p inventory
                             
                             # Create static inventory file
-                            cat > inventory/hosts << EOF
-[cloudnotes_servers]
-cloudnotes-server ansible_host=${SERVER_IP}
-                            
-[cloudnotes_servers:vars]
-ansible_user=ubuntu
-ansible_ssh_private_key_file=../terraform/keys/cloudnotes-key.pem
-ansible_python_interpreter=/usr/bin/python3
+                            cat > inventory/hosts.yml << EOF
+all:
+  children:
+    project_CloudNotes:
+      hosts:
+        cloudnotes_server:
+          ansible_host: ${SERVER_IP}
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ../terraform/keys/cloudnotes-key.pem
+          ansible_python_interpreter: /usr/bin/python3
 EOF
                             
                             echo "Ansible inventory created with server IP: ${SERVER_IP}"
@@ -116,6 +118,15 @@ EOF
                         string(credentialsId: 'EMAIL_PASS', variable: 'EMAIL_PASS')
                     ]) {
                         sh '''
+                            echo "Installing Ansible collections..."
+                            ansible-galaxy collection install -r requirements.yml
+                            
+                            echo "Waiting for EC2 instance to be fully ready..."
+                            sleep 30
+                            
+                            echo "Testing SSH connectivity..."
+                            ansible all -i inventory/hosts.yml -m ping
+                            
                             echo "Running Ansible playbook..."
                             
                             # Export environment variables for Ansible
@@ -126,7 +137,7 @@ EOF
                             export EMAIL_PASS="${EMAIL_PASS}"
                             
                             # Run Ansible playbook
-                            ansible-playbook playbook.yml -i inventory/hosts -vv
+                            ansible-playbook playbook.yml -i inventory/hosts.yml -vv
                         '''
                     }
                 }
@@ -155,7 +166,7 @@ EOF
                         
                         # Check containers on remote server via SSH
                         echo "Checking Docker containers on server..."
-                        ssh -o StrictHostKeyChecking=no -i terraform/keys/cloudnotes-key.pem ubuntu@${SERVER_IP} "cd /opt/cloudnotes && docker-compose ps"
+                        ssh -o StrictHostKeyChecking=no -i terraform/keys/cloudnotes-key.pem ubuntu@${SERVER_IP} "docker ps --filter 'name=cloudnotes' --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'"
                     """
                 }
             }
