@@ -30,7 +30,8 @@ const AuthSuccess = () => {
           const token = localStorage.getItem('token')
           if (token) {
             // Verify token is still valid
-            const response = await fetch('http://localhost:5000/api/auth/me', {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:5000`
+            const response = await fetch(`${backendUrl}/api/auth/me`, {
               headers: {
                 'Authorization': `Bearer ${token}`
               }

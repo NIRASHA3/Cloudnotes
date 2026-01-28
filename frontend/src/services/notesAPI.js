@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_BACKEND_URL 
+  ? `${import.meta.env.VITE_BACKEND_URL}/api`
+  : `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
 // Get authentication token
 const getAuthToken = () => {

@@ -14,7 +14,8 @@ const ForgotPassword = () => {
     setMessage('')
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:5000`
+      const response = await fetch(`${backendUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
