@@ -43,8 +43,8 @@ docker-compose.override.yml
 *.tfstate.backup
 .terraform/
 .terraform.lock.hcl
-*.tfvars
-!example.tfvars
+# Allow dev.tfvars (non-sensitive configuration)
+# *.tfvars
 
 # SSH Keys (NEVER commit these!)
 *.pem
