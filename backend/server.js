@@ -18,6 +18,11 @@ app.use(cors({
 app.use(express.json());
 app.use(passport.initialize());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes); 

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   backend:
     image: {{ backend_image }}
@@ -12,10 +10,11 @@ services:
     networks:
       - cloudnotes-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   frontend:
     image: {{ frontend_image }}
