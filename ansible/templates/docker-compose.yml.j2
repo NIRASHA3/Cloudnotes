@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  backend:
+    image: {{ backend_image }}
+    container_name: cloudnotes-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.backend
+    restart: unless-stopped
+    networks:
+      - cloudnotes-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: {{ frontend_image }}
+    container_name: cloudnotes-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cloudnotes-network
+
+networks:
+  cloudnotes-network:
+    driver: bridge

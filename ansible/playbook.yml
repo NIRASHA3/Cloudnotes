@@ -1,0 +1,134 @@
+---
+- name: Deploy CloudNotes Application on AWS EC2
+  hosts: tag_Project_CloudNotes
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    app_name: "cloudnotes"
+    app_user: "ubuntu"
+    app_dir: "/opt/{{ app_name }}"
+    docker_compose_version: "v2.24.5"
+    
+    # Docker images from your Docker Hub
+    backend_image: "nirashadeshani/cloudnotes:backend"
+    frontend_image: "nirashadeshani/cloudnotes:frontend"
+    
+    # These will be passed from Jenkins credentials
+    mongodb_uri: "{{ lookup('env', 'MONGO_URI') }}"
+    jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
+    google_client_id: "{{ lookup('env', 'GOOGLE_CLIENT_ID') }}"
+    google_client_secret: "{{ lookup('env', 'GOOGLE_CLIENT_SECRET') }}"
+    email_pass: "{{ lookup('env', 'EMAIL_PASS') }}"
+  
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Install required system packages
+      apt:
+        name:
+          - docker.io
+          - git
+          - curl
+          - python3-pip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+    
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+    
+    - name: Add user to docker group
+      user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+    
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+    
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+    
+    - name: Create docker-compose.yml
+      template:
+        src: templates/docker-compose.yml.j2
+        dest: "{{ app_dir }}/docker-compose.yml"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0644'
+    
+    - name: Create backend environment file
+      template:
+        src: templates/backend.env.j2
+        dest: "{{ app_dir }}/.env.backend"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0600'
+    
+    - name: Pull Docker images
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop:
+        - "{{ backend_image }}"
+        - "{{ frontend_image }}"
+    
+    - name: Deploy application with Docker Compose
+      docker_compose:
+        project_src: "{{ app_dir }}"
+        state: present
+        restarted: yes
+    
+    - name: Wait for backend to be ready
+      wait_for:
+        port: 5000
+        delay: 10
+        timeout: 60
+        state: started
+        host: "{{ ansible_host }}"
+    
+    - name: Wait for frontend to be ready
+      wait_for:
+        port: 5173
+        delay: 10
+        timeout: 60
+        state: started
+        host: "{{ ansible_host }}"
+    
+    - name: Verify deployment
+      uri:
+        url: "http://{{ ansible_host }}:5173"
+        status_code: 200
+        timeout: 30
+      register: deployment_check
+      until: deployment_check.status == 200
+      retries: 5
+      delay: 10
+    
+    - name: Show deployment status
+      debug:
+        msg:
+          - "CloudNotes deployment successful!"
+          - "Frontend: http://{{ ansible_host }}:5173"
+          - "Backend API: http://{{ ansible_host }}:5000"
+          - "Google OAuth: http://{{ ansible_host }}:5000/api/auth/google"
+
