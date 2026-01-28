@@ -32,8 +32,7 @@ pipeline {
                         echo "Initializing Terraform..."
                         terraform init -input=false
                         
-                        echo "Workspace setup..."
-                        terraform workspace select ${TF_WORKSPACE} || terraform workspace new ${TF_WORKSPACE}
+                        echo "Using workspace: ${TF_WORKSPACE}"
                     '''
                 }
             }
