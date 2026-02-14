@@ -198,7 +198,7 @@ pipeline {
                     sh '''
                         echo "Initializing Terraform..."
                         terraform init -input=false -no-color 2>&1 || true
-                        echo "Terraform initialized"
+                        echo "                        cat /root/cloudnotes/terraform/keys/cloudnotes-key.pemTerraform initialized"
                         echo "Using workspace: ${TF_WORKSPACE}"
                     '''
                 }
@@ -293,14 +293,18 @@ pipeline {
         stage('Configure Ansible Inventory') {
             steps {
                 dir('ansible') {
-                    sh """
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'cloudnotes-ssh-key', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')
+                    ]) {
+                        sh """
                         echo "Configuring Ansible inventory for \${SERVER_IP}..."
-                        
-                        # Ensure SSH key has correct permissions
-                        chmod 600 ../terraform/keys/cloudnotes-key.pem 2>/dev/null || true
-                        
+
+                        mkdir -p ../terraform/keys
                         mkdir -p inventory
-                        
+
+                        cp "${SSH_KEY_FILE}" ../terraform/keys/cloudnotes-key.pem
+                        chmod 600 ../terraform/keys/cloudnotes-key.pem
+
                         cat > inventory/hosts.yml << 'ANSIBLE_EOF'
 all:
   children:
@@ -308,14 +312,15 @@ all:
       hosts:
         cloudnotes_server:
           ansible_host: ${SERVER_IP}
-          ansible_user: ubuntu
+          ansible_user: ${SSH_USER}
           ansible_ssh_private_key_file: ../terraform/keys/cloudnotes-key.pem
           ansible_python_interpreter: /usr/bin/python3
 ANSIBLE_EOF
                         
                         echo "Ansible inventory created"
                         cat inventory/hosts.yml
-                    """
+                        """
+                    }
                 }
             }
         }
