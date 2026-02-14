@@ -320,7 +320,7 @@ ANSIBLE_EOF
                             export ANSIBLE_DEPRECATION_WARNINGS=False
                             
                             echo "Installing Ansible collections..."
-                            ansible-galaxy collection install -r requirements.yml 2>&1 | grep -v "Skipping\|already" || true
+                            ansible-galaxy collection install -r requirements.yml 2>&1 | tail -5 || true
                             
                             echo ""
                             echo "Testing SSH connectivity..."
