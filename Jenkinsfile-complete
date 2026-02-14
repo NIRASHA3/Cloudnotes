@@ -238,7 +238,29 @@ pipeline {
             steps {
                 dir('terraform') {
                     sh '''
+                        set -e
                         echo "Applying Terraform configuration..."
+
+                        # Import existing AWS resources if they exist but are missing from state.
+                        KEY_NAME="cloudnotes-key-dev"
+                        SG_NAME="cloudnotes-sg-dev"
+
+                        if ! terraform state list | grep -q '^aws_key_pair.cloudnotes_key$'; then
+                            if aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1; then
+                                echo "Importing existing key pair: $KEY_NAME"
+                                terraform import aws_key_pair.cloudnotes_key "$KEY_NAME" || true
+                            fi
+                        fi
+
+                        if ! terraform state list | grep -q '^aws_security_group.cloudnotes_sg$'; then
+                            VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
+                            SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SG_NAME" Name=vpc-id,Values="$VPC_ID" --query 'SecurityGroups[0].GroupId' --output text)
+                            if [ -n "$SG_ID" ] && [ "$SG_ID" != "None" ]; then
+                                echo "Importing existing security group: $SG_NAME ($SG_ID)"
+                                terraform import aws_security_group.cloudnotes_sg "$SG_ID" || true
+                            fi
+                        fi
+
                         terraform apply -auto-approve -no-color tfplan
                         
                         echo "=== Terraform Outputs ==="
@@ -403,16 +425,18 @@ ANSIBLE_EOF
     post {
         always {
             script {
-                sh '''
-                    echo ""
-                    echo "=========================================="
-                    echo "PIPELINE SUMMARY"
-                    echo "=========================================="
-                    echo "Build: #${BUILD_NUMBER}"
-                    echo "Status: ${currentBuild.result ?: 'IN PROGRESS'}"
-                    echo "Duration: ${currentBuild.durationString ?: 'Running...'}"
-                    echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
-                '''
+                def status = currentBuild.result ?: 'IN PROGRESS'
+                def duration = currentBuild.durationString ?: 'Running...'
+                def timestamp = sh(script: "date '+%Y-%m-%d %H:%M:%S'", returnStdout: true).trim()
+
+                echo ''
+                echo '=========================================='
+                echo 'PIPELINE SUMMARY'
+                echo '=========================================='
+                echo "Build: #${env.BUILD_NUMBER}"
+                echo "Status: ${status}"
+                echo "Duration: ${duration}"
+                echo "Timestamp: ${timestamp}"
                 
                 try {
                     dir('terraform') {
