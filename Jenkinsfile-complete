@@ -197,7 +197,7 @@ pipeline {
                 dir('terraform') {
                     sh '''
                         echo "Initializing Terraform..."
-                        terraform init -input=false
+                        terraform init -input=false -no-color
                         echo "Using workspace: ${TF_WORKSPACE}"
                     '''
                 }
@@ -220,10 +220,10 @@ pipeline {
                         
                         if (instanceExists) {
                             echo "Instance exists. Planning updates..."
-                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                            sh 'terraform plan -out=tfplan -input=false -no-color -var-file=dev.tfvars'
                         } else {
                             echo "New infrastructure deployment..."
-                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                            sh 'terraform plan -out=tfplan -input=false -no-color -var-file=dev.tfvars'
                         }
                     }
                 }
@@ -238,12 +238,12 @@ pipeline {
                 dir('terraform') {
                     sh '''
                         echo "Applying Terraform configuration..."
-                        terraform apply -auto-approve tfplan
+                        terraform apply -auto-approve -no-color tfplan
                         
                         echo "=== Terraform Outputs ==="
-                        terraform output -json
+                        terraform output -no-color -json
                         
-                        SERVER_IP=$(terraform output -raw public_ip)
+                        SERVER_IP=$(terraform output -no-color -raw public_ip)
                         echo "Server IP: $SERVER_IP"
                     '''
                 }
@@ -255,7 +255,7 @@ pipeline {
                 dir('terraform') {
                     script {
                         env.SERVER_IP = sh(
-                            script: 'terraform output -raw public_ip 2>/dev/null || echo "13.51.227.34"',
+                            script: 'terraform output -no-color -raw public_ip 2>/dev/null || echo "13.51.227.34"',
                             returnStdout: true
                         ).trim()
                         echo "Target server: ${env.SERVER_IP}"
@@ -377,7 +377,7 @@ EOF
                 
                 try {
                     def serverIp = sh(
-                        script: 'terraform -chdir=terraform output -raw public_ip 2>/dev/null || echo "13.51.227.34"',
+                        script: 'terraform -chdir=terraform output -no-color -raw public_ip 2>/dev/null || echo "13.51.227.34"',
                         returnStdout: true
                     ).trim()
                     
