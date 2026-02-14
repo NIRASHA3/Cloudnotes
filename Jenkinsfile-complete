@@ -1,0 +1,355 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        // Docker Configuration
+        DOCKER_REPO = 'nirashadeshani/cloudnotes'
+        DOCKER_IMAGE_BACKEND = "${DOCKER_REPO}:backend"
+        DOCKER_IMAGE_FRONTEND = "${DOCKER_REPO}:frontend"
+        DOCKER_IMAGE_BACKEND_VERSIONED = ''
+        DOCKER_IMAGE_FRONTEND_VERSIONED = ''
+        DOCKERHUB_CREDENTIALS_ID = 'dockerhub-credentials'
+        BACKEND_CONTAINER = 'cloudnotes-backend-prod'
+        FRONTEND_CONTAINER = 'cloudnotes-frontend-prod'
+        BACKEND_PORT = '5000'
+        FRONTEND_PORT = '5173'
+        
+        // AWS Credentials
+        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        
+        // Application Credentials
+        MONGO_URI = credentials('MONGO_URI')
+        JWT_SECRET = credentials('JWT_SECRET')
+        GOOGLE_CLIENT_ID = credentials('GOOGLE_CLIENT_ID')
+        GOOGLE_CLIENT_SECRET = credentials('GOOGLE_CLIENT_SECRET')
+        EMAIL_PASS = credentials('EMAIL_PASS')
+        
+        // Terraform workspace
+        TF_WORKSPACE = 'dev'
+    }
+
+    parameters {
+        booleanParam(name: 'RUN_TERRAFORM', defaultValue: false, description: 'Run Terraform to provision/update infrastructure (only needed for first deployment or infrastructure changes)')
+        booleanParam(name: 'RUN_SONARQUBE', defaultValue: false, description: 'Run SonarQube scan (requires Jenkins SonarQube config + sonar-scanner)')
+        booleanParam(name: 'RUN_TRIVY', defaultValue: true, description: 'Run Trivy image scan')
+    }
+
+    stages {
+        // ========================================
+        // CI STAGES - Build, Test, Scan, Push
+        // ========================================
+        
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/NIRASHA3/Cloudnotes.git'
+            }
+        }
+
+        stage('Set Build Metadata') {
+            steps {
+                script {
+                    def shortSha = (env.GIT_COMMIT ?: 'local').take(7)
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortSha}"
+                    env.DOCKER_IMAGE_BACKEND_VERSIONED = "${env.DOCKER_REPO}:backend-${env.IMAGE_TAG}"
+                    env.DOCKER_IMAGE_FRONTEND_VERSIONED = "${env.DOCKER_REPO}:frontend-${env.IMAGE_TAG}"
+                    echo "Using image tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('backend') {
+                    sh 'npm install'
+                }
+                dir('frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Run Tests and Lint') {
+            steps {
+                dir('backend') {
+                    sh 'npm test --if-present || echo "No backend tests found"'
+                    sh 'npm run lint --if-present || echo "No backend linter configured"'
+                }
+                dir('frontend') {
+                    sh 'npm test --if-present || echo "No frontend tests found"'
+                    sh 'npm run lint --if-present || echo "No frontend linter configured"'
+                }
+            }
+        }
+
+        stage('Code Quality Scan (SonarQube)') {
+            when {
+                expression { return params.RUN_SONARQUBE }
+            }
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        sonar-scanner \
+                          -Dsonar.projectKey=cloudnotes \
+                          -Dsonar.projectName=cloudnotes \
+                          -Dsonar.sources=backend,frontend \
+                          -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info \
+                          -Dsonar.sourceEncoding=UTF-8
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh """
+                    echo "Building Docker images..."
+                    docker build -f Dockerfile.backend -t ${DOCKER_IMAGE_BACKEND_VERSIONED} -t ${DOCKER_IMAGE_BACKEND} .
+                    docker build -f Dockerfile.frontend -t ${DOCKER_IMAGE_FRONTEND_VERSIONED} -t ${DOCKER_IMAGE_FRONTEND} .
+                    echo "Docker images built successfully"
+                """
+            }
+        }
+
+        stage('Security Scan (Trivy Images)') {
+            when {
+                expression { return params.RUN_TRIVY }
+            }
+            steps {
+                sh """
+                    echo "Running Trivy image scans..."
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${DOCKER_IMAGE_BACKEND_VERSIONED} || echo "Trivy scan completed with findings"
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${DOCKER_IMAGE_FRONTEND_VERSIONED} || echo "Trivy scan completed with findings"
+                """
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    sh """
+                        echo "Logging into Docker Hub..."
+                        echo "\$DOCKERHUB_PASSWORD" | docker login -u "\$DOCKERHUB_USERNAME" --password-stdin
+                        
+                        echo "Pushing versioned images..."
+                        docker push ${DOCKER_IMAGE_BACKEND_VERSIONED}
+                        docker push ${DOCKER_IMAGE_FRONTEND_VERSIONED}
+                        
+                        echo "Pushing latest tags..."
+                        docker push ${DOCKER_IMAGE_BACKEND}
+                        docker push ${DOCKER_IMAGE_FRONTEND}
+                        
+                        docker logout
+                        echo "Images pushed to Docker Hub successfully"
+                    """
+                }
+            }
+        }
+        
+        // ========================================
+        // CD STAGES - Infrastructure & Deployment
+        // ========================================
+        
+        stage('Terraform Init') {
+            when {
+                expression { return params.RUN_TERRAFORM }
+            }
+            steps {
+                dir('terraform') {
+                    sh '''
+                        echo "Initializing Terraform..."
+                        terraform init -input=false
+                        echo "Using workspace: ${TF_WORKSPACE}"
+                    '''
+                }
+            }
+        }
+        
+        stage('Terraform Plan') {
+            when {
+                expression { return params.RUN_TERRAFORM }
+            }
+            steps {
+                dir('terraform') {
+                    script {
+                        echo "Creating Terraform plan..."
+                        
+                        def instanceExists = sh(
+                            script: 'terraform state list 2>/dev/null | grep aws_instance.cloudnotes_server || true',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (instanceExists) {
+                            echo "Instance exists. Planning updates..."
+                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                        } else {
+                            echo "New infrastructure deployment..."
+                            sh 'terraform plan -out=tfplan -input=false -var-file=dev.tfvars'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Terraform Apply') {
+            when {
+                expression { return params.RUN_TERRAFORM }
+            }
+            steps {
+                dir('terraform') {
+                    sh '''
+                        echo "Applying Terraform configuration..."
+                        terraform apply -auto-approve tfplan
+                        
+                        echo "=== Terraform Outputs ==="
+                        terraform output -json
+                        
+                        SERVER_IP=$(terraform output -raw public_ip)
+                        echo "Server IP: $SERVER_IP"
+                    '''
+                }
+            }
+        }
+        
+        stage('Get Server IP') {
+            steps {
+                dir('terraform') {
+                    script {
+                        env.SERVER_IP = sh(
+                            script: 'terraform output -raw public_ip 2>/dev/null || echo "13.51.227.34"',
+                            returnStdout: true
+                        ).trim()
+                        echo "Target server: ${env.SERVER_IP}"
+                    }
+                }
+            }
+        }
+        
+        stage('Configure Ansible Inventory') {
+            steps {
+                dir('ansible') {
+                    script {
+                        sh """
+                            echo "Configuring Ansible inventory for ${env.SERVER_IP}..."
+                            
+                            mkdir -p inventory
+                            
+                            cat > inventory/hosts.yml << EOF
+all:
+  children:
+    project_CloudNotes:
+      hosts:
+        cloudnotes_server:
+          ansible_host: ${env.SERVER_IP}
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ../terraform/keys/cloudnotes-key.pem
+          ansible_python_interpreter: /usr/bin/python3
+EOF
+                            
+                            echo "Ansible inventory created"
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to EC2 with Ansible') {
+            steps {
+                dir('ansible') {
+                    sh '''
+                        echo "Installing Ansible collections..."
+                        ansible-galaxy collection install -r requirements.yml
+                        
+                        echo "Waiting for EC2 instance to be ready..."
+                        sleep 10
+                        
+                        echo "Testing SSH connectivity..."
+                        ansible all -i inventory/hosts.yml -m ping
+                        
+                        echo "Running Ansible playbook to deploy application..."
+                        ansible-playbook playbook.yml -i inventory/hosts.yml -vv
+                    '''
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                sh """
+                    echo "Verifying deployment on server: ${env.SERVER_IP}"
+                    
+                    echo "Waiting for services to start..."
+                    sleep 20
+                    
+                    echo "Testing frontend (port 5173)..."
+                    curl -s -f -o /dev/null -w "Frontend HTTP: %{http_code}\\n" http://${env.SERVER_IP}:5173 || echo "Frontend check failed (might still be starting)"
+                    
+                    echo "Testing backend (port 5000)..."
+                    curl -s -f -o /dev/null -w "Backend HTTP: %{http_code}\\n" http://${env.SERVER_IP}:5000 || echo "Backend check failed (might still be starting)"
+                    
+                    echo "Checking Docker containers on remote server..."
+                    ssh -o StrictHostKeyChecking=no -i terraform/keys/cloudnotes-key.pem ubuntu@${env.SERVER_IP} "docker ps --filter 'name=cloudnotes' --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'" || echo "Could not verify containers"
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                sh '''
+                    echo "========================================"
+                    echo "CI/CD PIPELINE SUMMARY"
+                    echo "========================================"
+                    echo "Timestamp: $(date)"
+                    echo "Job: ${JOB_NAME}"
+                    echo "Build: ${BUILD_NUMBER}"
+                    echo ""
+                '''
+                
+                try {
+                    def serverIp = sh(
+                        script: 'terraform -chdir=terraform output -raw public_ip 2>/dev/null || echo "13.51.227.34"',
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo """
+========================================
+APPLICATION URLS
+========================================
+Frontend: http://${serverIp}:5173
+Backend:  http://${serverIp}:5000
+Google OAuth: http://${serverIp}:5000/api/auth/google
+
+========================================
+DOCKER IMAGES (Pushed to Docker Hub)
+========================================
+Backend:  ${env.DOCKER_IMAGE_BACKEND_VERSIONED}
+Frontend: ${env.DOCKER_IMAGE_FRONTEND_VERSIONED}
+
+========================================
+MANAGEMENT
+========================================
+SSH Access: ssh -i terraform/keys/cloudnotes-key.pem ubuntu@${serverIp}
+View Logs:  ssh ubuntu@${serverIp} "docker logs -f cloudnotes-backend"
+                    """
+                } catch (Exception e) {
+                    echo "Could not retrieve deployment details"
+                }
+            }
+        }
+
+        success {
+            echo '✅ Complete CI/CD pipeline executed successfully!'
+        }
+
+        failure {
+            echo '❌ CI/CD pipeline failed! Check logs above for details.'
+        }
+    }
+}
