@@ -120,14 +120,18 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                script {
-                    ensureImageTags(env)
-                }
                 withEnv([
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
-                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
+                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}",
+                    "DOCKER_IMAGE_BACKEND=${env.DOCKER_IMAGE_BACKEND}",
+                    "DOCKER_IMAGE_FRONTEND=${env.DOCKER_IMAGE_FRONTEND}"
                 ]) {
                     sh '''
+                        SHORT_SHA=$(echo "${GIT_COMMIT:-local}" | cut -c1-7)
+                        IMAGE_TAG="${IMAGE_TAG:-${BUILD_NUMBER}-${SHORT_SHA}}"
+                        DOCKER_IMAGE_BACKEND_VERSIONED="${DOCKER_IMAGE_BACKEND_VERSIONED:-${DOCKER_REPO}:backend-${IMAGE_TAG}}"
+                        DOCKER_IMAGE_FRONTEND_VERSIONED="${DOCKER_IMAGE_FRONTEND_VERSIONED:-${DOCKER_REPO}:frontend-${IMAGE_TAG}}"
+
                         echo "Building Docker images..."
                         echo "Backend image:  $DOCKER_IMAGE_BACKEND_VERSIONED"
                         echo "Frontend image: $DOCKER_IMAGE_FRONTEND_VERSIONED"
@@ -144,14 +148,16 @@ pipeline {
                 expression { return params.RUN_TRIVY }
             }
             steps {
-                script {
-                    ensureImageTags(env)
-                }
                 withEnv([
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
                     "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
                 ]) {
                     sh '''
+                        SHORT_SHA=$(echo "${GIT_COMMIT:-local}" | cut -c1-7)
+                        IMAGE_TAG="${IMAGE_TAG:-${BUILD_NUMBER}-${SHORT_SHA}}"
+                        DOCKER_IMAGE_BACKEND_VERSIONED="${DOCKER_IMAGE_BACKEND_VERSIONED:-${DOCKER_REPO}:backend-${IMAGE_TAG}}"
+                        DOCKER_IMAGE_FRONTEND_VERSIONED="${DOCKER_IMAGE_FRONTEND_VERSIONED:-${DOCKER_REPO}:frontend-${IMAGE_TAG}}"
+
                         echo "Running Trivy image scans..."
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_BACKEND_VERSIONED" || echo "Trivy scan completed with findings"
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_FRONTEND_VERSIONED" || echo "Trivy scan completed with findings"
@@ -162,15 +168,19 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                script {
-                    ensureImageTags(env)
-                }
                 withEnv([
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
-                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
+                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}",
+                    "DOCKER_IMAGE_BACKEND=${env.DOCKER_IMAGE_BACKEND}",
+                    "DOCKER_IMAGE_FRONTEND=${env.DOCKER_IMAGE_FRONTEND}"
                 ]) {
                     withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
                         sh '''
+                            SHORT_SHA=$(echo "${GIT_COMMIT:-local}" | cut -c1-7)
+                            IMAGE_TAG="${IMAGE_TAG:-${BUILD_NUMBER}-${SHORT_SHA}}"
+                            DOCKER_IMAGE_BACKEND_VERSIONED="${DOCKER_IMAGE_BACKEND_VERSIONED:-${DOCKER_REPO}:backend-${IMAGE_TAG}}"
+                            DOCKER_IMAGE_FRONTEND_VERSIONED="${DOCKER_IMAGE_FRONTEND_VERSIONED:-${DOCKER_REPO}:frontend-${IMAGE_TAG}}"
+
                             echo "Logging into Docker Hub..."
                             echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
                             
