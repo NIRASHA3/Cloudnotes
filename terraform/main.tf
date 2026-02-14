@@ -24,22 +24,30 @@ provider "aws" {
   # secret_key = var.aws_secret_key
 }
 
-# Generate SSH key pair
+locals {
+  existing_pub_key_path = "${path.module}/keys/cloudnotes-key.pub"
+  has_existing_pub_key  = fileexists(local.existing_pub_key_path)
+}
+
+# Generate SSH key pair only if no existing public key is present
 resource "tls_private_key" "cloudnotes_key" {
+  count     = local.has_existing_pub_key ? 0 : 1
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 # Save private key locally (for Ansible)
 resource "local_file" "private_key" {
-  content         = tls_private_key.cloudnotes_key.private_key_pem
+  count           = local.has_existing_pub_key ? 0 : 1
+  content         = tls_private_key.cloudnotes_key[0].private_key_pem
   filename        = "${path.module}/keys/cloudnotes-key.pem"
   file_permission = "0600"
 }
 
 # Save public key locally (optional)
 resource "local_file" "public_key" {
-  content         = tls_private_key.cloudnotes_key.public_key_openssh
+  count           = local.has_existing_pub_key ? 0 : 1
+  content         = tls_private_key.cloudnotes_key[0].public_key_openssh
   filename        = "${path.module}/keys/cloudnotes-key.pub"
   file_permission = "0644"
 }
@@ -47,7 +55,7 @@ resource "local_file" "public_key" {
 # Create a key pair for SSH access
 resource "aws_key_pair" "cloudnotes_key" {
   key_name   = "cloudnotes-key-${var.environment}"
-  public_key = tls_private_key.cloudnotes_key.public_key_openssh
+  public_key = local.has_existing_pub_key ? file(local.existing_pub_key_path) : tls_private_key.cloudnotes_key[0].public_key_openssh
   
   tags = {
     Project     = "CloudNotes"
