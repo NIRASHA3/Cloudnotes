@@ -66,10 +66,10 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
+                    sh 'rm -rf node_modules package-lock.json && npm install'
                 }
                 dir('frontend') {
-                    sh 'npm install'
+                    sh 'rm -rf node_modules package-lock.json && npm install'
                 }
             }
         }
@@ -275,10 +275,7 @@ EOF
                             echo "Waiting for EC2 instance to be ready..."
                             sleep 10
                             
-                            echo "Testi                            cd /root/cloudnotes
-                            git add Jenkinsfile-complete
-                            git commit -m "fix: use env vars for docker image tags"
-                            git push origin mainng SSH connectivity..."
+                            echo "Testing SSH connectivity..."
                             ansible all -i inventory/hosts.yml -m ping
                             
                             echo "Running Ansible playbook to deploy application..."
