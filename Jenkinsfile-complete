@@ -1,3 +1,16 @@
+def ensureImageTags(env) {
+    if (!env.IMAGE_TAG?.trim()) {
+        def shortSha = (env.GIT_COMMIT ?: 'local').take(7)
+        env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortSha}"
+    }
+    if (!env.DOCKER_IMAGE_BACKEND_VERSIONED?.trim()) {
+        env.DOCKER_IMAGE_BACKEND_VERSIONED = "${env.DOCKER_REPO}:backend-${env.IMAGE_TAG}"
+    }
+    if (!env.DOCKER_IMAGE_FRONTEND_VERSIONED?.trim()) {
+        env.DOCKER_IMAGE_FRONTEND_VERSIONED = "${env.DOCKER_REPO}:frontend-${env.IMAGE_TAG}"
+    }
+}
+
 pipeline {
     agent any
 
@@ -107,14 +120,22 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh '''
-                    echo "Building Docker images..."
-                    echo "Backend image:  $DOCKER_IMAGE_BACKEND_VERSIONED"
-                    echo "Frontend image: $DOCKER_IMAGE_FRONTEND_VERSIONED"
-                    docker build -f Dockerfile.backend -t "$DOCKER_IMAGE_BACKEND_VERSIONED" -t "$DOCKER_IMAGE_BACKEND" .
-                    docker build -f Dockerfile.frontend -t "$DOCKER_IMAGE_FRONTEND_VERSIONED" -t "$DOCKER_IMAGE_FRONTEND" .
-                    echo "Docker images built successfully"
-                '''
+                script {
+                    ensureImageTags(env)
+                }
+                withEnv([
+                    "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
+                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
+                ]) {
+                    sh '''
+                        echo "Building Docker images..."
+                        echo "Backend image:  $DOCKER_IMAGE_BACKEND_VERSIONED"
+                        echo "Frontend image: $DOCKER_IMAGE_FRONTEND_VERSIONED"
+                        docker build -f Dockerfile.backend -t "$DOCKER_IMAGE_BACKEND_VERSIONED" -t "$DOCKER_IMAGE_BACKEND" .
+                        docker build -f Dockerfile.frontend -t "$DOCKER_IMAGE_FRONTEND_VERSIONED" -t "$DOCKER_IMAGE_FRONTEND" .
+                        echo "Docker images built successfully"
+                    '''
+                }
             }
         }
 
@@ -123,32 +144,48 @@ pipeline {
                 expression { return params.RUN_TRIVY }
             }
             steps {
-                sh '''
-                    echo "Running Trivy image scans..."
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_BACKEND_VERSIONED" || echo "Trivy scan completed with findings"
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_FRONTEND_VERSIONED" || echo "Trivy scan completed with findings"
-                '''
+                script {
+                    ensureImageTags(env)
+                }
+                withEnv([
+                    "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
+                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
+                ]) {
+                    sh '''
+                        echo "Running Trivy image scans..."
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_BACKEND_VERSIONED" || echo "Trivy scan completed with findings"
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL "$DOCKER_IMAGE_FRONTEND_VERSIONED" || echo "Trivy scan completed with findings"
+                    '''
+                }
             }
         }
 
         stage('Push Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                    sh '''
-                        echo "Logging into Docker Hub..."
-                        echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-                        
-                        echo "Pushing versioned images..."
-                        docker push "$DOCKER_IMAGE_BACKEND_VERSIONED"
-                        docker push "$DOCKER_IMAGE_FRONTEND_VERSIONED"
-                        
-                        echo "Pushing latest tags..."
-                        docker push "$DOCKER_IMAGE_BACKEND"
-                        docker push "$DOCKER_IMAGE_FRONTEND"
-                        
-                        docker logout
-                        echo "Images pushed to Docker Hub successfully"
-                    '''
+                script {
+                    ensureImageTags(env)
+                }
+                withEnv([
+                    "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
+                    "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
+                ]) {
+                    withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                        sh '''
+                            echo "Logging into Docker Hub..."
+                            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+                            
+                            echo "Pushing versioned images..."
+                            docker push "$DOCKER_IMAGE_BACKEND_VERSIONED"
+                            docker push "$DOCKER_IMAGE_FRONTEND_VERSIONED"
+                            
+                            echo "Pushing latest tags..."
+                            docker push "$DOCKER_IMAGE_BACKEND"
+                            docker push "$DOCKER_IMAGE_FRONTEND"
+                            
+                            docker logout
+                            echo "Images pushed to Docker Hub successfully"
+                        '''
+                    }
                 }
             }
         }
