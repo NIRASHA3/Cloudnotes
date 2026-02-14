@@ -11,8 +11,16 @@ const noteRoutes = require('./routes/notes');
 const app = express();
 
 // Middleware
+const rawOrigins = process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigins = rawOrigins.split(',').map((origin) => origin.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g., curl, health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());
