@@ -261,19 +261,34 @@ EOF
         stage('Deploy to EC2 with Ansible') {
             steps {
                 dir('ansible') {
-                    sh '''
-                        echo "Installing Ansible collections..."
-                        ansible-galaxy collection install -r requirements.yml
-                        
-                        echo "Waiting for EC2 instance to be ready..."
-                        sleep 10
-                        
-                        echo "Testing SSH connectivity..."
-                        ansible all -i inventory/hosts.yml -m ping
-                        
-                        echo "Running Ansible playbook to deploy application..."
-                        ansible-playbook playbook.yml -i inventory/hosts.yml -vv
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'MONGO_URI', variable: 'MONGO_URI'),
+                        string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET'),
+                        string(credentialsId: 'GOOGLE_CLIENT_ID', variable: 'GOOGLE_CLIENT_ID'),
+                        string(credentialsId: 'GOOGLE_CLIENT_SECRET', variable: 'GOOGLE_CLIENT_SECRET'),
+                        string(credentialsId: 'EMAIL_PASS', variable: 'EMAIL_PASS')
+                    ]) {
+                        sh '''
+                            echo "Installing Ansible collections..."
+                            ansible-galaxy collection install -r requirements.yml
+                            
+                            echo "Waiting for EC2 instance to be ready..."
+                            sleep 10
+                            
+                            echo "Testing SSH connectivity..."
+                            ansible all -i inventory/hosts.yml -m ping
+                            
+                            echo "Running Ansible playbook to deploy application..."
+                            
+                            export MONGO_URI="${MONGO_URI}"
+                            export JWT_SECRET="${JWT_SECRET}"
+                            export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}"
+                            export GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}"
+                            export EMAIL_PASS="${EMAIL_PASS}"
+                            
+                            ansible-playbook playbook.yml -i inventory/hosts.yml -vv
+                        '''
+                    }
                 }
             }
         }
