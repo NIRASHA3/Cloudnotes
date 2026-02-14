@@ -1,16 +1,3 @@
-def ensureImageTags(env) {
-    if (!env.IMAGE_TAG?.trim()) {
-        def shortSha = (env.GIT_COMMIT ?: 'local').take(7)
-        env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortSha}"
-    }
-    if (!env.DOCKER_IMAGE_BACKEND_VERSIONED?.trim()) {
-        env.DOCKER_IMAGE_BACKEND_VERSIONED = "${env.DOCKER_REPO}:backend-${env.IMAGE_TAG}"
-    }
-    if (!env.DOCKER_IMAGE_FRONTEND_VERSIONED?.trim()) {
-        env.DOCKER_IMAGE_FRONTEND_VERSIONED = "${env.DOCKER_REPO}:frontend-${env.IMAGE_TAG}"
-    }
-}
-
 pipeline {
     agent any
 
@@ -51,6 +38,7 @@ pipeline {
         booleanParam(name: 'RUN_TERRAFORM', defaultValue: false, description: 'Run Terraform to provision/update infrastructure (only needed for first deployment or infrastructure changes)')
         booleanParam(name: 'RUN_SONARQUBE', defaultValue: false, description: 'Run SonarQube scan (requires Jenkins SonarQube config + sonar-scanner)')
         booleanParam(name: 'RUN_TRIVY', defaultValue: true, description: 'Run Trivy image scan')
+        booleanParam(name: 'RUN_CLEANUP', defaultValue: false, description: 'Cleanup Docker images/containers on the Jenkins agent to free disk space')
     }
 
     stages {
@@ -361,6 +349,21 @@ EOF
                 """
             }
         }
+
+        stage('Cleanup Docker (Jenkins Agent)') {
+            when {
+                expression { return params.RUN_CLEANUP }
+            }
+            steps {
+                sh '''
+                    echo "Cleaning up Docker resources on Jenkins agent..."
+                    docker container prune -f
+                    docker image prune -a -f
+                    docker volume prune -f
+                    docker builder prune -a -f
+                '''
+            }
+        }
     }
 
     post {
@@ -414,6 +417,13 @@ View Logs:  ssh ubuntu@${serverIp} "docker logs -f cloudnotes-backend"
 
         failure {
             echo '❌ CI/CD pipeline failed! Check logs above for details.'
+            sh '''
+                echo "Cleaning up Docker resources after failure..."
+                docker container prune -f
+                docker image prune -a -f
+                docker volume prune -f
+                docker builder prune -a -f
+            '''
         }
     }
 }
