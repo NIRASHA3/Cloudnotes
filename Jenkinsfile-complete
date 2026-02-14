@@ -109,6 +109,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 withEnv([
+                    "DOCKER_REPO=${env.DOCKER_REPO}",
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
                     "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}",
                     "DOCKER_IMAGE_BACKEND=${env.DOCKER_IMAGE_BACKEND}",
@@ -137,6 +138,7 @@ pipeline {
             }
             steps {
                 withEnv([
+                    "DOCKER_REPO=${env.DOCKER_REPO}",
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
                     "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}"
                 ]) {
@@ -157,6 +159,7 @@ pipeline {
         stage('Push Docker Images') {
             steps {
                 withEnv([
+                    "DOCKER_REPO=${env.DOCKER_REPO}",
                     "DOCKER_IMAGE_BACKEND_VERSIONED=${env.DOCKER_IMAGE_BACKEND_VERSIONED}",
                     "DOCKER_IMAGE_FRONTEND_VERSIONED=${env.DOCKER_IMAGE_FRONTEND_VERSIONED}",
                     "DOCKER_IMAGE_BACKEND=${env.DOCKER_IMAGE_BACKEND}",
