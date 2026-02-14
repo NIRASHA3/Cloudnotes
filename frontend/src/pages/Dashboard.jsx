@@ -79,7 +79,7 @@ const Dashboard = () => {
       {/* Welcome Header */}
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h1>Welcome to NotesApp</h1>
+          <h1>Welcome to NotesApp!</h1>
           <p>Manage your notes efficiently and stay organized</p>
           {isStorageCritical && (
             <div className="storage-alert critical">
