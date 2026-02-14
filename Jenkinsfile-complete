@@ -262,7 +262,7 @@ pipeline {
                         fi
 
                         # Recreate the plan because imports can change state and stale the previous plan.
-                        terraform plan -no-color -out tfplan
+                        terraform plan -no-color -out tfplan -var-file=dev.tfvars
                         terraform apply -auto-approve -no-color tfplan
                         
                         echo "=== Terraform Outputs ==="
