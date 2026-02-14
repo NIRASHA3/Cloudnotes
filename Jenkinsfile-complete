@@ -109,8 +109,8 @@ pipeline {
             steps {
                 sh """
                     echo "Building Docker images..."
-                    docker build -f Dockerfile.backend -t ${DOCKER_IMAGE_BACKEND_VERSIONED} -t ${DOCKER_IMAGE_BACKEND} .
-                    docker build -f Dockerfile.frontend -t ${DOCKER_IMAGE_FRONTEND_VERSIONED} -t ${DOCKER_IMAGE_FRONTEND} .
+                    docker build -f Dockerfile.backend -t ${env.DOCKER_IMAGE_BACKEND_VERSIONED} -t ${env.DOCKER_IMAGE_BACKEND} .
+                    docker build -f Dockerfile.frontend -t ${env.DOCKER_IMAGE_FRONTEND_VERSIONED} -t ${env.DOCKER_IMAGE_FRONTEND} .
                     echo "Docker images built successfully"
                 """
             }
@@ -123,8 +123,8 @@ pipeline {
             steps {
                 sh """
                     echo "Running Trivy image scans..."
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${DOCKER_IMAGE_BACKEND_VERSIONED} || echo "Trivy scan completed with findings"
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${DOCKER_IMAGE_FRONTEND_VERSIONED} || echo "Trivy scan completed with findings"
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${env.DOCKER_IMAGE_BACKEND_VERSIONED} || echo "Trivy scan completed with findings"
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL ${env.DOCKER_IMAGE_FRONTEND_VERSIONED} || echo "Trivy scan completed with findings"
                 """
             }
         }
@@ -137,12 +137,12 @@ pipeline {
                         echo "\$DOCKERHUB_PASSWORD" | docker login -u "\$DOCKERHUB_USERNAME" --password-stdin
                         
                         echo "Pushing versioned images..."
-                        docker push ${DOCKER_IMAGE_BACKEND_VERSIONED}
-                        docker push ${DOCKER_IMAGE_FRONTEND_VERSIONED}
+                        docker push ${env.DOCKER_IMAGE_BACKEND_VERSIONED}
+                        docker push ${env.DOCKER_IMAGE_FRONTEND_VERSIONED}
                         
                         echo "Pushing latest tags..."
-                        docker push ${DOCKER_IMAGE_BACKEND}
-                        docker push ${DOCKER_IMAGE_FRONTEND}
+                        docker push ${env.DOCKER_IMAGE_BACKEND}
+                        docker push ${env.DOCKER_IMAGE_FRONTEND}
                         
                         docker logout
                         echo "Images pushed to Docker Hub successfully"
@@ -275,7 +275,10 @@ EOF
                             echo "Waiting for EC2 instance to be ready..."
                             sleep 10
                             
-                            echo "Testing SSH connectivity..."
+                            echo "Testi                            cd /root/cloudnotes
+                            git add Jenkinsfile-complete
+                            git commit -m "fix: use env vars for docker image tags"
+                            git push origin mainng SSH connectivity..."
                             ansible all -i inventory/hosts.yml -m ping
                             
                             echo "Running Ansible playbook to deploy application..."
