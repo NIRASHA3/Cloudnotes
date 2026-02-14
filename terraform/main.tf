@@ -56,6 +56,11 @@ resource "local_file" "public_key" {
 resource "aws_key_pair" "cloudnotes_key" {
   key_name   = "cloudnotes-key-${var.environment}"
   public_key = local.has_existing_pub_key ? file(local.existing_pub_key_path) : tls_private_key.cloudnotes_key[0].public_key_openssh
+
+  # Avoid forced recreation if the existing key pair uses the same name.
+  lifecycle {
+    ignore_changes = [public_key]
+  }
   
   tags = {
     Project     = "CloudNotes"
