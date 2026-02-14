@@ -2,6 +2,8 @@
 
 A full-stack MERN application for creating and managing notes with rich text editing, categories, and real-time updates.
 
+<!-- Testing webhook connection -->
+
 ## Features
 
 - 📝 Rich text editing with React Quill
