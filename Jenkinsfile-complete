@@ -358,9 +358,8 @@ EOF
                 sh '''
                     echo "Cleaning up Docker resources on Jenkins agent..."
                     docker container prune -f
-                    docker image prune -a -f
+                    docker image prune -f
                     docker volume prune -f
-                    docker builder prune -a -f
                 '''
             }
         }
