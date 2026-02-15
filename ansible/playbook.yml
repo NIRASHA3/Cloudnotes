@@ -12,6 +12,7 @@
     
     # Domain configuration - Change this to your DuckDNS domain
     app_domain: "cloudnotes.duckdns.org"
+    letsencrypt_email: "nirashadeshani3@gmail.com"
     
     # Docker images from your Docker Hub
     backend_image: "nirashadeshani/cloudnotes:backend"
@@ -36,6 +37,9 @@
           - docker.io
           - git
           - curl
+          - nginx
+          - certbot
+          - python3-certbot-nginx
           - python3-pip
           - apt-transport-https
           - ca-certificates
@@ -90,6 +94,31 @@
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
         mode: '0644'
+
+    - name: Create Nginx site config
+      template:
+        src: templates/nginx-cloudnotes.conf.j2
+        dest: "/etc/nginx/sites-available/cloudnotes.conf"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable Nginx site
+      file:
+        src: "/etc/nginx/sites-available/cloudnotes.conf"
+        dest: "/etc/nginx/sites-enabled/cloudnotes.conf"
+        state: link
+
+    - name: Disable default Nginx site
+      file:
+        path: "/etc/nginx/sites-enabled/default"
+        state: absent
+
+    - name: Reload Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
     
     - name: Create backend environment file
       template:
@@ -114,6 +143,13 @@
         project_src: "{{ app_dir }}"
         state: present
         recreate: always
+
+    - name: Obtain/renew Let's Encrypt certificate
+      command: >-
+        certbot --nginx -d {{ app_domain }}
+        --non-interactive --agree-tos -m {{ letsencrypt_email }} --redirect
+      args:
+        creates: "/etc/letsencrypt/live/{{ app_domain }}/fullchain.pem"
     
     - name: Wait for backend to be ready
       wait_for:
@@ -133,7 +169,7 @@
     
     - name: Verify deployment
       uri:
-        url: "http://{{ ansible_host }}:5173"
+        url: "https://{{ app_domain }}"
         status_code: 200
         timeout: 30
       register: deployment_check
@@ -145,7 +181,7 @@
       debug:
         msg:
           - "CloudNotes deployment successful!"
-          - "Frontend: http://{{ ansible_host }}:5173"
-          - "Backend API: http://{{ ansible_host }}:5000"
-          - "Google OAuth: http://{{ ansible_host }}:5000/api/auth/google"
+          - "Frontend: https://{{ app_domain }}"
+          - "Backend API: https://{{ app_domain }}/api"
+          - "Google OAuth: https://{{ app_domain }}/api/auth/google"
 
