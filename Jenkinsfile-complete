@@ -456,9 +456,9 @@ ANSIBLE_EOF
 ========================================
 APPLICATION ACCESS
 ========================================
-Frontend:  http://${serverIp}:5173
-Backend:   http://${serverIp}:5000
-API:       http://${serverIp}:5000/api/auth/google
+Frontend:  https://cloudnotes.duckdns.org
+Backend:   https://cloudnotes.duckdns.org/api
+API:       https://cloudnotes.duckdns.org/api/auth/google
 
 ========================================
 DOCKER IMAGES
